@@ -2,6 +2,17 @@
 
 这个目录已经是一个可以直接推上 GitHub 的完整仓库。按下面 4 步就能发布。
 
+## 0. 先设置 git 身份
+
+仓库里的初始提交用的是占位身份（这台机器没配过 git 用户名）。推之前先改成你自己的：
+
+```bash
+cd /Users/jack/workspace/ppt-clicker
+git config user.name  "你的名字"
+git config user.email "你的邮箱"
+git commit --amend --reset-author --no-edit   # 把初始提交的作者改掉
+```
+
 ## 1. 替换占位符
 
 把下面文件里的 `<owner>` 换成你的 GitHub 用户名（或组织名）：
