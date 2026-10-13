@@ -15,11 +15,11 @@ git commit --amend --reset-author --no-edit   # 把初始提交的作者改掉
 
 ## 1. 替换占位符
 
-把下面文件里的 `<owner>` 换成你的 GitHub 用户名（或组织名）：
+把下面文件里的 `tncki` 换成你的 GitHub 用户名（或组织名）：
 
 ```bash
 cd /Users/jack/workspace/ppt-clicker
-grep -rl "<owner>" . --exclude-dir=.git --exclude-dir=build --exclude-dir=dist
+grep -rl "tncki" . --exclude-dir=.git --exclude-dir=build --exclude-dir=dist
 ```
 
 需要改的位置：
@@ -33,7 +33,7 @@ grep -rl "<owner>" . --exclude-dir=.git --exclude-dir=build --exclude-dir=dist
 另外可以顺手在 `README.md` 顶部加 CI 徽章：
 
 ```markdown
-[![CI](https://github.com/<owner>/ppt-clicker/actions/workflows/ci.yml/badge.svg)](https://github.com/<owner>/ppt-clicker/actions/workflows/ci.yml)
+[![CI](https://github.com/tncki/ppt-clicker/actions/workflows/ci.yml/badge.svg)](https://github.com/tncki/ppt-clicker/actions/workflows/ci.yml)
 ```
 
 > `Info.plist` 里的 bundle id 是 `io.github.pptclicker`（中性、无需域名）。如果你有自己的域名，可以改成 `com.yourdomain.pptclicker`，注意改完要重新授权一次辅助功能。
@@ -44,7 +44,7 @@ grep -rl "<owner>" . --exclude-dir=.git --exclude-dir=build --exclude-dir=dist
 cd /Users/jack/workspace/ppt-clicker
 
 # 本地已经有初始提交；创建一个空仓库（不要勾选 README/.gitignore/LICENSE）
-git remote add origin git@github.com:<owner>/ppt-clicker.git
+git remote add origin git@github.com:tncki/ppt-clicker.git
 git branch -M main
 git push -u origin main
 ```
@@ -76,7 +76,7 @@ shasum -a 256 dist/PPT-Clicker-2.0.0.zip     # 填进 cask 的 sha256
 把填好的 cask 放进你自己的 tap 仓库（`homebrew-tap/Casks/ppt-clicker.rb`），用户就能：
 
 ```bash
-brew install --cask <owner>/tap/ppt-clicker
+brew install --cask tncki/tap/ppt-clicker
 ```
 
 ## 关于签名与公证

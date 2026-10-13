@@ -1,5 +1,10 @@
 # PPT Clicker
 
+[![CI](https://github.com/tncki/ppt-clicker/actions/workflows/ci.yml/badge.svg)](https://github.com/tncki/ppt-clicker/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/tncki/ppt-clicker)](https://github.com/tncki/ppt-clicker/releases)
+[![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey)](https://github.com/tncki/ppt-clicker)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 **Turn any mouse into a presentation clicker.**
 
 No dongle, no extra hardware, no vendor driver. While your slideshow is running,
@@ -38,7 +43,7 @@ including browser-based decks such as Google Slides.
 ### 1. Download
 
 Grab `PPT-Clicker-<version>.zip` (or `.dmg`) from
-[Releases](https://github.com/<owner>/ppt-clicker/releases), unzip and drag
+[Releases](https://github.com/tncki/ppt-clicker/releases), unzip and drag
 **PPTClicker.app** into `/Applications`.
 
 ### 2. Bypass Gatekeeper once
@@ -211,7 +216,7 @@ Sources/
 Requirements: macOS 13+, Xcode Command Line Tools (or Xcode).
 
 ```bash
-git clone https://github.com/<owner>/ppt-clicker.git
+git clone https://github.com/tncki/ppt-clicker.git
 cd ppt-clicker
 ./build.sh                 # host arch + runs the self-test suite
 ./build.sh --universal     # arm64 + x86_64

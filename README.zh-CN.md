@@ -1,5 +1,10 @@
 # PPT 翻页笔（PPT Clicker）
 
+[![CI](https://github.com/tncki/ppt-clicker/actions/workflows/ci.yml/badge.svg)](https://github.com/tncki/ppt-clicker/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/tncki/ppt-clicker)](https://github.com/tncki/ppt-clicker/releases)
+[![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey)](https://github.com/tncki/ppt-clicker)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 **把任意鼠标变成翻页笔。**
 
 不用接收器、不用额外硬件、不用厂商驱动。放映 PPT 时，让普通鼠标变成演示遥控器；不放映时它完全不打扰你。
@@ -33,7 +38,7 @@
 
 ### 1. 下载
 
-从 [Releases](https://github.com/<owner>/ppt-clicker/releases) 下载 `PPT-Clicker-<版本>.zip` 或 `.dmg`，解压后把 **PPTClicker.app** 拖进 `/Applications`。
+从 [Releases](https://github.com/tncki/ppt-clicker/releases) 下载 `PPT-Clicker-<版本>.zip` 或 `.dmg`，解压后把 **PPTClicker.app** 拖进 `/Applications`。
 
 ### 2. 绕过一次 Gatekeeper
 
@@ -163,7 +168,7 @@ Sources/
 需要 macOS 13+ 与 Xcode Command Line Tools（或 Xcode）。
 
 ```bash
-git clone https://github.com/<owner>/ppt-clicker.git
+git clone https://github.com/tncki/ppt-clicker.git
 cd ppt-clicker
 ./build.sh                 # 本机架构 + 跑自测
 ./build.sh --universal     # arm64 + x86_64 通用二进制
