@@ -2,7 +2,14 @@ name: Windows
 
 on:
   push:
+    branches: [main, master]
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows.yml"
   pull_request:
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows.yml"
   workflow_dispatch:
 
 jobs:
@@ -42,6 +49,9 @@ jobs:
           $report = Join-Path $env:TEMP "pptclicker-selftest.txt"
           if (Test-Path $report) {
             Get-Content $report | ForEach-Object { Write-Host $_ }
+            Get-Content $report | Where-Object { $_ -match '结果：' } | ForEach-Object {
+              Write-Host "::notice title=self-test::$_"
+            }
           } else {
             Write-Host "::error title=self-test::report file missing (process may have crashed before writing it)"
           }
@@ -65,8 +75,8 @@ jobs:
           $report = Join-Path $env:TEMP "pptclicker-hooktest.txt"
           if (Test-Path $report) {
             Get-Content $report | ForEach-Object { Write-Host $_ }
-            Get-Content $report | Where-Object { $_ -match 'FAIL' } | ForEach-Object {
-              Write-Host "::warning title=hooktest::$_"
+            Get-Content $report | Where-Object { $_ -match 'OK|FAIL|结果' } | ForEach-Object {
+              Write-Host "::notice title=hooktest::$_"
             }
           }
           if ($p.ExitCode -ne 0) {
