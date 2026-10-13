@@ -41,15 +41,11 @@ else
 fi
 
 echo "==> 计算校验和"
-(cd "$DIST" && { [[ $DMG_OK == 1 ]] && shasum -a 256 "$NAME.dmg"; shasum -a 256 "$NAME.zip"; } > SHA256SUMS.txt)
-
-# 顺手刷新 Homebrew cask 里的版本号与 zip 校验和
-CASK="$ROOT/Casks/ppt-clicker.rb"
-if [[ -f "$CASK" ]]; then
-  ZIP_SHA=$(grep " $NAME.zip\$" "$DIST/SHA256SUMS.txt" | awk '{print $1}')
-  /usr/bin/sed -i '' -e "s/  version \".*\"/  version \"$VERSION\"/" -e "s/  sha256 \".*\"/  sha256 \"$ZIP_SHA\"/" "$CASK"
-  echo "已同步 $CASK（version=$VERSION）—— 记得 git commit"
+: > "$DIST/SHA256SUMS.txt"
+if [[ $DMG_OK == 1 && -f "$DIST/$NAME.dmg" ]]; then
+  (cd "$DIST" && shasum -a 256 "$NAME.dmg") >> "$DIST/SHA256SUMS.txt"
 fi
+(cd "$DIST" && shasum -a 256 "$NAME.zip") >> "$DIST/SHA256SUMS.txt"
 
 echo ""
 cat "$DIST/SHA256SUMS.txt"
@@ -58,6 +54,8 @@ echo "发布包就绪："
 [[ $DMG_OK == 1 ]] && echo "  $DIST/$NAME.dmg"
 echo "  $DIST/$NAME.zip"
 echo ""
-echo "提示：本包为临时签名，用户首次打开需在"
-echo "  系统设置 → 隐私与安全性 → 仍要打开"
-echo "或执行： xattr -dr com.apple.quarantine \"/Applications/PPT Clicker.app\""
+echo "提示 1：本地包的校验和 ≠ Release 上的包（打包字节不同），"
+echo "        cask 请用 tools/update-cask.sh 从已发布的 Release 同步。"
+echo "提示 2：本包为免公证的临时签名，但用 curl/Homebrew 安装不会被 Gatekeeper 拦；"
+echo "        浏览器直接下载的解压后需执行一次："
+echo "        xattr -dr com.apple.quarantine \"/Applications/PPTClicker.app\""

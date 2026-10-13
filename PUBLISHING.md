@@ -75,14 +75,18 @@ curl 下载的 zip / 解压出的 App → xattr 无 quarantine 属性 → 直接
 spctl -a -t exec 判定 rejected（未公证），但只要没隔离标记就不会被拦
 ```
 
-### cask 维护
+### cask 维护（发版后必须做）
 
-`Casks/ppt-clicker.rb` 里的 `version` 与 `sha256` 由 `release.sh` **自动同步**，
-发版后记得把它一起提交：
+`Casks/ppt-clicker.rb` 里的 `sha256` **必须对应 Release 上真实发布的 zip**——
+本地 `./release.sh` 打出的包字节不同、校验和也不同，所以不要在本地手填。
+
+发版后跑一次专用脚本，它会下载官方 `SHA256SUMS.txt`、**重新下载并核对** zip，
+再写回 cask：
 
 ```bash
-./release.sh
-git add Casks/ppt-clicker.rb && git commit -m "chore: 同步 cask 2.0.1"
+./tools/update-cask.sh          # 取最新 Release
+./tools/update-cask.sh 2.0.1    # 或指定版本
+git add Casks/ppt-clicker.rb && git commit -m "chore: cask 2.0.1"
 ```
 
 用户端：

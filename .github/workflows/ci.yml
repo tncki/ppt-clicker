@@ -30,7 +30,15 @@ jobs:
           /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" dist/PPTClicker.app/Contents/Info.plist
 
       - name: Package
-        run: ./release.sh --no-build
+        run: |
+          set -o pipefail
+          if ! ./release.sh --no-build 2>&1 | tee /tmp/package.log; then
+            # 把失败输出写成 annotation：这样无需管理员权限也能在公开 API 上读到日志
+            while IFS= read -r line; do
+              [ -n "$line" ] && echo "::error title=release.sh::$line"
+            done < /tmp/package.log
+            exit 1
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
