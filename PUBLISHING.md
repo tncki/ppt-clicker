@@ -1,79 +1,73 @@
-# 发布指引（仓库作者用）
+# 发布与维护指引
 
-这个目录已经是一个可以直接推上 GitHub 的完整仓库。按下面 4 步就能发布。
+仓库：<https://github.com/tncki/ppt-clicker>　维护者：[@tncki](https://github.com/tncki)
 
-## 0. 先设置 git 身份
+当前状态：本地已有完整 git 历史，SSH 推送可用（`ssh -T git@github.com` → `Hi tncki!`），
+只差在 GitHub 上创建仓库。
 
-仓库里的初始提交用的是占位身份（这台机器没配过 git 用户名）。推之前先改成你自己的：
+## 首次发布
 
-```bash
-cd /Users/jack/workspace/ppt-clicker
-git config user.name  "你的名字"
-git config user.email "你的邮箱"
-git commit --amend --reset-author --no-edit   # 把初始提交的作者改掉
-```
+### 1. 在 GitHub 创建空仓库
 
-## 1. 替换占位符
+打开 <https://github.com/new>：
 
-把下面文件里的 `tncki` 换成你的 GitHub 用户名（或组织名）：
+- **Repository name**：`ppt-clicker`
+- **不要**勾选 Add README / .gitignore / license（本地已经有内容，勾了会冲突）
+- 可见性建议 **Public**
 
-```bash
-cd /Users/jack/workspace/ppt-clicker
-grep -rl "tncki" . --exclude-dir=.git --exclude-dir=build --exclude-dir=dist
-```
-
-需要改的位置：
-
-| 文件 | 内容 |
-| --- | --- |
-| `README.md` / `README.zh-CN.md` | clone 地址、Releases 链接 |
-| `packaging/homebrew/ppt-clicker.rb` | cask 的 url / homepage |
-| `.github/workflows/*.yml` | 无需修改（用的是相对路径） |
-
-另外可以顺手在 `README.md` 顶部加 CI 徽章：
-
-```markdown
-[![CI](https://github.com/tncki/ppt-clicker/actions/workflows/ci.yml/badge.svg)](https://github.com/tncki/ppt-clicker/actions/workflows/ci.yml)
-```
-
-> `Info.plist` 里的 bundle id 是 `io.github.pptclicker`（中性、无需域名）。如果你有自己的域名，可以改成 `com.yourdomain.pptclicker`，注意改完要重新授权一次辅助功能。
-
-## 2. 建仓库并推送
+### 2. 推送
 
 ```bash
 cd /Users/jack/workspace/ppt-clicker
-
-# 本地已经有初始提交；创建一个空仓库（不要勾选 README/.gitignore/LICENSE）
 git remote add origin git@github.com:tncki/ppt-clicker.git
 git branch -M main
 git push -u origin main
 ```
 
-## 3. 打标签发版
+推送后 CI（`.github/workflows/ci.yml`）会自动编译并跑 89 项自测，首页徽章会变绿。
 
-CI 会自动构建通用二进制、跑 89 项自测，并把 zip/dmg 传到 Release：
+### 3. 打标签发版
+
+CI 会自动构建通用二进制（arm64 + x86_64）、打包 zip/dmg 并创建 Release：
 
 ```bash
 git tag v2.0.0
 git push origin v2.0.0
 ```
 
-工作流 `.github/workflows/release.yml` 会做四件事：
+`release.yml` 会做四件事：
 
-1. 校验 tag 与 `Info.plist` 里的版本号一致（不一致直接失败，避免发出错版本的包）
+1. 校验 tag 与 `Info.plist` 的版本号一致（不一致直接失败，避免发错版本）
 2. `./release.sh` 构建 arm64 + x86_64 通用二进制并打包
 3. 生成 `SHA256SUMS.txt`
 4. 创建 GitHub Release 并上传产物
 
-## 4. 可选：Homebrew
+## 后续版本
 
-`packaging/homebrew/ppt-clicker.rb` 是 cask 模板。发版后：
+1. 改 `Info.plist` 里的 `CFBundleShortVersionString`（和 `CFBundleVersion`）
+2. 更新 `CHANGELOG.md`
+3. 本地验证：`./build.sh`（89 项自测）+ 手动跑一遍四种开关
+4. `git commit` → `git push` → `git tag vX.Y.Z` → `git push origin vX.Y.Z`
+
+## 本地构建
 
 ```bash
-shasum -a 256 dist/PPT-Clicker-2.0.0.zip     # 填进 cask 的 sha256
+./build.sh                 # 本机架构 + 自测
+./build.sh --universal     # 通用二进制
+./release.sh               # 通用二进制 + zip + dmg + SHA256SUMS.txt
 ```
 
-把填好的 cask 放进你自己的 tap 仓库（`homebrew-tap/Casks/ppt-clicker.rb`），用户就能：
+> 注意：沙箱环境里 `hdiutil` 无法创建挂载点，本地只出 zip；GitHub Actions 不受限，会同时产出 dmg。
+
+## Homebrew
+
+`packaging/homebrew/ppt-clicker.rb` 是 cask 模板。每次发版后：
+
+```bash
+shasum -a 256 dist/PPT-Clicker-<版本>.zip     # 填进 cask 的 sha256
+```
+
+放进自己的 tap 仓库（`homebrew-tap/Casks/ppt-clicker.rb`）后，用户就能：
 
 ```bash
 brew install --cask tncki/tap/ppt-clicker
@@ -81,15 +75,15 @@ brew install --cask tncki/tap/ppt-clicker
 
 ## 关于签名与公证
 
-当前发布包是**临时签名（ad-hoc）**，用户首次打开需要在
+发布包是**临时签名（ad-hoc）**，用户首次打开需要在
 「系统设置 → 隐私与安全性 → 仍要打开」，或执行一次
 `xattr -dr com.apple.quarantine "/Applications/PPTClicker.app"`。
 
-如果你想彻底消除这一步，需要 Apple 开发者账号（$99/年）：
+想彻底消除这一步需要 Apple 开发者账号（$99/年）：
 
-1. 在 Apple Developer 生成 *Developer ID Application* 证书，导出 `.p12`；
-2. 把 `.p12` 与密码、Apple ID、Team ID、App 专用密码放进仓库 Secrets；
-3. 在 `.github/workflows/release.yml` 的打包步骤后加：
+1. 生成 *Developer ID Application* 证书并导出 `.p12`
+2. 把 `.p12`、密码、Apple ID、Team ID、App 专用密码放进仓库 Secrets
+3. 在 `.github/workflows/release.yml` 打包步骤后加导入证书 + 签名 + 公证：
 
    ```yaml
    - name: Import certificate
@@ -117,4 +111,10 @@ brew install --cask tncki/tap/ppt-clicker
        xcrun stapler staple dist/PPTClicker.app
    ```
 
-   然后 `./release.sh --no-build` 重新打包即可（注意 `build.sh` 里的 `codesign --sign -` 要换成正式证书）。
+   同时把 `build.sh` 里的 `codesign --sign -` 换成正式证书。
+
+## 维护备忘
+
+- **bundle id**：`io.github.pptclicker`（中性，无需自有域名）。若改成 `com.<你的域名>.*`，用户需要重新授权辅助功能。
+- **目录不能动**：App 放在哪个目录，辅助功能授权和开机自启就绑在哪里；移动后要重新授权。
+- **代码注释与日志是中文**，界面文案走 `L.s(...)` 双语表（见 `Sources/Localization.swift`）。
