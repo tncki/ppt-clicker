@@ -102,6 +102,110 @@ func write(_ image: NSImage, size: CGFloat, to url: URL) {
     try? png.write(to: url)
 }
 
+
+// MARK: - ICO（Windows 用）
+
+func appendU16(_ data: inout Data, _ value: UInt16) {
+    data.append(UInt8(value & 0xFF))
+    data.append(UInt8((value >> 8) & 0xFF))
+}
+
+func appendU32(_ data: inout Data, _ value: UInt32) {
+    data.append(UInt8(value & 0xFF))
+    data.append(UInt8((value >> 8) & 0xFF))
+    data.append(UInt8((value >> 16) & 0xFF))
+    data.append(UInt8((value >> 24) & 0xFF))
+}
+
+/// 把图标渲染成 ICO（每个尺寸一条 32 位 BMP + AND 掩码，兼容性最好）
+func writeICO(master: NSImage, to url: URL, sizes: [Int]) {
+    var entries: [(Int, Data)] = []
+
+    for size in sizes {
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: size, pixelsHigh: size,
+            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: size * 4, bitsPerPixel: 32
+        ) else { continue }
+
+        NSGraphicsContext.saveGraphicsState()
+        if let ctx = NSGraphicsContext(bitmapImageRep: rep) {
+            NSGraphicsContext.current = ctx
+            ctx.imageInterpolation = .high
+            master.draw(
+                in: NSRect(x: 0, y: 0, width: CGFloat(size), height: CGFloat(size)),
+                from: NSRect(origin: .zero, size: master.size),
+                operation: .copy, fraction: 1.0
+            )
+        }
+        NSGraphicsContext.restoreGraphicsState()
+
+        guard let src = rep.bitmapData else { continue }
+        let rowBytes = rep.bytesPerRow
+
+        var bmp = Data()
+        // BITMAPINFOHEADER（必须正好 40 字节：其中 biPlanes/biBitCount 是 2 字节字段）
+        appendU32(&bmp, 40)                    // biSize
+        appendU32(&bmp, UInt32(size))          // biWidth
+        appendU32(&bmp, UInt32(size * 2))      // biHeight = 图像 + AND 掩码
+        appendU16(&bmp, 1)                     // biPlanes
+        appendU16(&bmp, 32)                    // biBitCount
+        appendU32(&bmp, 0)                     // biCompression
+        appendU32(&bmp, 0)                     // biSizeImage
+        appendU32(&bmp, 0)                     // biXPelsPerMeter
+        appendU32(&bmp, 0)                     // biYPelsPerMeter
+        appendU32(&bmp, 0)                     // biClrUsed
+        appendU32(&bmp, 0)                     // biClrImportant
+        // 像素：BGRA、自下而上；AppKit 是预乘 alpha，这里反预乘
+        for y in stride(from: size - 1, through: 0, by: -1) {
+            let row = src + y * rowBytes
+            for x in 0..<size {
+                let p = row + x * 4
+                var r = UInt32(p[0]), g = UInt32(p[1]), b = UInt32(p[2])
+                let a = UInt32(p[3])
+                if a > 0 && a < 255 {
+                    r = min(255, r * 255 / a)
+                    g = min(255, g * 255 / a)
+                    b = min(255, b * 255 / a)
+                }
+                bmp.append(UInt8(b)); bmp.append(UInt8(g)); bmp.append(UInt8(r)); bmp.append(UInt8(a))
+            }
+        }
+        // AND 掩码：1 表示透明，每行 4 字节对齐
+        let maskRowBytes = ((size + 31) / 32) * 4
+        for y in stride(from: size - 1, through: 0, by: -1) {
+            let row = src + y * rowBytes
+            var bits = [UInt8](repeating: 0, count: maskRowBytes)
+            for x in 0..<size where row[x * 4 + 3] == 0 {
+                bits[x / 8] |= UInt8(0x80 >> (x % 8))
+            }
+            bmp.append(contentsOf: bits)
+        }
+        entries.append((size, bmp))
+    }
+
+    var out = Data()
+    appendU16(&out, 0)                       // reserved
+    appendU16(&out, 1)                       // type = icon
+    appendU16(&out, UInt16(entries.count))
+    var offset = 6 + 16 * entries.count
+    for (size, data) in entries {
+        out.append(UInt8(size >= 256 ? 0 : size))
+        out.append(UInt8(size >= 256 ? 0 : size))
+        out.append(0)                        // 调色板数
+        out.append(0)                        // reserved
+        appendU16(&out, 1)                   // planes
+        appendU16(&out, 32)                  // bpp
+        appendU32(&out, UInt32(data.count))
+        appendU32(&out, UInt32(offset))
+        offset += data.count
+    }
+    for (_, data) in entries { out.append(data) }
+
+    try? out.write(to: url)
+    print("wrote \(url.lastPathComponent) (\(entries.count) 个尺寸, \(out.count) 字节)")
+}
+
 let master = drawIcon(size: 1024)
 
 let variants: [(String, CGFloat)] = [
@@ -111,6 +215,11 @@ let variants: [(String, CGFloat)] = [
     ("icon_256x256.png", 256), ("icon_256x256@2x.png", 512),
     ("icon_512x512.png", 512), ("icon_512x512@2x.png", 1024),
 ]
+
+if outputDir.hasSuffix(".ico") {
+    writeICO(master: master, to: URL(fileURLWithPath: outputDir), sizes: [16, 24, 32, 48, 64, 128, 256])
+    exit(0)
+}
 
 let dir = URL(fileURLWithPath: outputDir)
 try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

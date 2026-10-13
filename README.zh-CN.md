@@ -36,45 +36,58 @@
 
 ## 安装
 
-三种方式。**前两种完全不弹 Gatekeeper** —— 因为脚本用 `curl` 下载，而只有浏览器下载才会被标记「隔离」属性（未公证的 App 被标记后才会被系统拦截）。
+两个平台都用命令行客户端下载（`curl` / `irm`）而不是浏览器 —— 这正是 macOS 不弹
+"无法验证开发者"、Windows 不弹 SmartScreen 的原因。
 
-### Homebrew（推荐）
+### macOS（Apple Silicon + Intel，macOS 13+）
 
 ```bash
+# Homebrew
 brew tap tncki/ppt-clicker https://github.com/tncki/ppt-clicker
 brew install --cask ppt-clicker
-```
 
-### 一行命令安装
-
-```bash
+# 或者一行安装脚本（下载 → 校验 SHA256 → 安装 → 启动）
 curl -fsSL https://raw.githubusercontent.com/tncki/ppt-clicker/main/install.sh | bash
 ```
 
-脚本会：取最新 Release → 用 `SHA256SUMS.txt` 校验完整性 → 装到 `/Applications`（不可写则退到 `~/Applications`）→ 启动。**无需要手动放行。**
-
-### 手动下载
-
-从 [Releases](https://github.com/tncki/ppt-clicker/releases) 下载 `PPT-Clicker-<版本>.zip` 或 `.dmg`，解压后把 **PPTClicker.app** 拖进 `/Applications`。浏览器下载会被标记为「隔离」，首次打开会被拦，执行一次即可：
+手动下载：从 [Releases](https://github.com/tncki/ppt-clicker/releases) 取
+`PPT-Clicker-<版本>.zip` 或 `.dmg`。浏览器下载会被标记隔离，先执行一次：
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/PPTClicker.app"
 ```
 
-（也可以先尝试打开，再到 系统设置 → 隐私与安全性 → **仍要打开**。注意 macOS 15 起已经取消了旧的"右键→打开"绕过方式。）
+然后授予**辅助功能**权限（拦截鼠标必需，程序会自己打开设置页）。想要按 ESC 关闭，
+再给**输入监控**。系统设置 → 隐私与安全性 → 辅助功能 / 输入监控 → 打开
+**PPT Clicker**。
 
-> **为什么不做公证？** 公证需要 Apple 开发者账号（$99/年），本项目刻意不使用。App 用临时签名，上面两条安装路径完全绕开这个提示。
+### Windows（10/11，x64）
 
-### 授予权限
+```powershell
+irm https://raw.githubusercontent.com/tncki/ppt-clicker/main/install.ps1 | iex
+```
 
-| 权限 | 用途 | 是否必需 |
+脚本会下载自包含的 `PPTClicker.exe`（目标机器**不需要装 .NET**）、放到
+`%LOCALAPPDATA%\PPTClicker`、创建开始菜单快捷方式并启动。
+**不需要任何系统权限，也不需要管理员身份** —— Windows 对低级鼠标钩子没有类似
+macOS 辅助功能那样的授权门槛。
+
+手动下载：解压 `PPT-Clicker-<版本>-win-x64.zip`，双击 `PPTClicker.exe` 即可。
+如果是浏览器下载导致 SmartScreen 拦截，执行一次：
+
+```powershell
+Unblock-File .\PPTClicker.exe
+```
+
+### 两个平台的差异
+
+| | macOS | Windows |
 | --- | --- | --- |
-| **辅助功能** | 拦截并替换鼠标事件 | **必需** |
-| **输入监控** | 只读旁听 `ESC` 键 | 只有想要「ESC 关闭」才需要 |
-
-系统设置 → 隐私与安全性 → 辅助功能 / 输入监控 → 打开 **PPT Clicker**。首次启动时程序会自动帮你打开对应设置页，菜单里也能随时看到权限状态。
-
-> 重新编译后授权会失效（macOS 把权限绑在二进制的签名指纹上），需要重新打开一次开关。
+| 开关快捷键 | `⌃⌥⌘P` | `Ctrl+Alt+Shift+P` |
+| 权限 | 辅助功能（ESC 还需输入监控） | 无 |
+| 配置文件 | `~/Library/Application Support/PPTClicker/config.json` | `%APPDATA%\PPTClicker\config.json` |
+| 演示程序白名单 | bundleID，如 `com.apple.iWork.Keynote` | 进程名，如 `POWERPNT.EXE` |
+| 开机自启 | LaunchAgent | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` |
 
 ## 使用
 
@@ -149,7 +162,7 @@ xattr -dr com.apple.quarantine "/Applications/PPTClicker.app"
 ## 实现原理
 
 ```
-Sources/
+Sources/            macOS 版（CGEventTap + AppKit）
   main.swift         入口 + 隐藏命令行开关（--selftest、--print-default-config …）
   AppDelegate.swift  菜单栏、权限、指示灯、配置重载、开机自启
   EventTap.swift     挂在 HID 层的 CGEventTap：拦截、吞事件、合成按键
@@ -159,6 +172,14 @@ Sources/
   Localization.swift 极简中英文字符串表
   Log.swift          文件日志
   SelfTest.swift     89 项无界面断言
+
+windows/            Windows 版（C# / .NET 8，SetWindowsHookEx + SendInput）
+  Program.cs         入口 + 命令行开关（--selftest、--hooktest）
+  TrayApp.cs         托盘菜单、全局快捷键、指示灯、开机自启（注册表）
+  MouseHook.cs       低级鼠标钩子：吞事件 + 合成方向键
+  KeyboardHook.cs    只旁听 ESC 的键盘钩子（永不拦截）
+  Mapping.cs         纯逻辑，与 Swift 版同口径（含自测）
+  HookTest.cs        CI 在真实 Windows 上跑的钩子链路端到端测试
 ```
 
 - 事件监听插在 **HID 事件流的头部**，先于任何 App（包括放映软件）收到鼠标事件；命中映射就吞掉原事件，再合成方向键回注到 HID 流。
@@ -192,6 +213,13 @@ cd ppt-clicker
 - 没有公证（刻意不使用付费 Apple 账号）。用 Homebrew 或一行脚本安装不会弹提示；
   浏览器下载则需执行一次上面的 `xattr` 命令。
 - 移动 App 目录会导致辅助功能授权与开机自启失效。
+
+**Windows 特有**
+
+- 低级钩子看不到发往**更高完整性级别**进程的输入：如果 PowerPoint 以管理员运行而本程序
+  是普通权限，就拦不到。要么都普通权限（默认），要么都以管理员运行。
+- 游戏和反作弊驱动常会屏蔽低级钩子 —— 对放映 PPT 没影响，但别指望在游戏里生效。
+- 在 Windows 上自行编译需要 .NET 8 SDK；普通用户不需要（发布的是自包含单文件 exe，约 40MB）。
 
 ## 许可证
 

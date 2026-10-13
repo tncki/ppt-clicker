@@ -1,0 +1,119 @@
+name: Windows
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows.yml"
+  pull_request:
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Show toolchain
+        shell: pwsh
+        run: dotnet --info
+
+      - name: Build
+        shell: pwsh
+        run: |
+          dotnet build -c Release --nologo 2>&1 | Tee-Object -FilePath build.log
+          if ($LASTEXITCODE -ne 0) {
+            # 编译失败时把输出逐行写成注解：公开仓库无需管理员权限即可读取
+            Get-Content build.log | ForEach-Object {
+              if ($_ -match '\S') { Write-Host "::error title=dotnet build::$_" }
+            }
+            exit 1
+          }
+
+      - name: Self-test (pure logic)
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path "bin/Release/net8.0-windows/PPTClicker.exe"
+          $p = Start-Process -FilePath $exe -ArgumentList "--selftest" -Wait -PassThru -NoNewWindow
+          $report = Join-Path $env:TEMP "pptclicker-selftest.txt"
+          if (Test-Path $report) {
+            Get-Content $report | ForEach-Object { Write-Host $_ }
+            Get-Content $report | Where-Object { $_ -match '结果：' } | ForEach-Object {
+              Write-Host "::notice title=self-test::$_"
+            }
+          } else {
+            Write-Host "::error title=self-test::report file missing (process may have crashed before writing it)"
+          }
+          if ($p.ExitCode -ne 0) {
+            if (Test-Path $report) {
+              Get-Content $report | Where-Object { $_ -match 'FAIL|异常' } | ForEach-Object {
+                Write-Host "::error title=self-test::$_"
+              }
+            }
+            Write-Host "::error title=self-test::self-test failed (exit $($p.ExitCode))"
+            exit 1
+          }
+
+      - name: Hook pipeline test (mouse hook -> SendInput)
+        id: hooktest
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $exe = Resolve-Path "bin/Release/net8.0-windows/PPTClicker.exe"
+          $p = Start-Process -FilePath $exe -ArgumentList "--hooktest" -Wait -PassThru -NoNewWindow
+          $report = Join-Path $env:TEMP "pptclicker-hooktest.txt"
+          if (Test-Path $report) {
+            Get-Content $report | ForEach-Object { Write-Host $_ }
+            Get-Content $report | Where-Object { $_ -match 'OK|FAIL|结果' } | ForEach-Object {
+              Write-Host "::notice title=hooktest::$_"
+            }
+          }
+          if ($p.ExitCode -ne 0) {
+            Write-Host "::warning title=hooktest::hook pipeline test did not pass in this session (exit $($p.ExitCode))"
+            exit 1
+          }
+
+      - name: Syntax-check install.ps1
+        shell: pwsh
+        working-directory: .
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path "install.ps1"), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors -and $errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Host "::error title=install.ps1::$($_.Message)" }
+            exit 1
+          }
+          Write-Host "install.ps1 语法正常"
+
+      - name: Publish single-file exe
+        shell: pwsh
+        run: >
+          dotnet publish -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true
+          -o publish/win-x64
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path publish/win-x64/PPTClicker.exe `
+            -DestinationPath dist/PPT-Clicker-win-x64.zip -Force
+          Get-FileHash dist/PPT-Clicker-win-x64.zip -Algorithm SHA256 | Format-List
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PPT-Clicker-windows-x64
+          path: windows/dist/PPT-Clicker-win-x64.zip
+          if-no-files-found: error
