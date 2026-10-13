@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var hotKeyHandlerRef: EventHandlerRef?
     private var hotkeyRegistered = false
     private var lastToggleAt: TimeInterval = -1e18
+    private var promptedForAccessibilityThisLaunch = false
 
     private var indicator: IndicatorWindow?
     private var escMonitor: Any?
@@ -135,8 +136,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let key = "guideShownVersion"
         guard UserDefaults.standard.string(forKey: key) != Self.appVersion else { return }
         UserDefaults.standard.set(Self.appVersion, forKey: key)
-        // 已经授权过就不打扰
-        guard !accessibilityGranted else { return }
+        // 已经授权过就不打扰；本次启动刚弹过系统授权弹窗时也不叠加
+        guard !accessibilityGranted, !promptedForAccessibilityThisLaunch else { return }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             guard let self, !self.accessibilityGranted else { return }
@@ -309,6 +310,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !accessibilityGranted {
             let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
             _ = AXIsProcessTrustedWithOptions(options)
+            promptedForAccessibilityThisLaunch = true
             Log.shared.write("缺少辅助功能权限，已弹出系统授权引导（拦截鼠标唯一必需的权限）")
         } else {
             Log.shared.write("辅助功能权限：已授权")
