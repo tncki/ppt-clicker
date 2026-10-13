@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.1.0
+
+**新增 Windows 版**（与 macOS 版功能对齐，各自独立实现）：
+
+- Windows 用 `SetWindowsHookEx(WH_MOUSE_LL)` 低级鼠标钩子拦截 + `SendInput` 合成按键
+- 托盘菜单、屏幕角落指示灯（绿=开启/灰=关闭/橙=钩子异常）、四种开关方式同上
+- 全局快捷键默认 `Ctrl+Alt+Shift+P`；ESC 用低级键盘钩子**只旁听**，不影响 PowerPoint 自己退出放映
+- 无需任何系统权限，也不需要管理员身份；开机自启写注册表 Run 项
+- 自包含单文件 exe（win-x64），目标机器无需安装 .NET
+- 配置格式与 macOS 版一致（`apps` 用 exe 名而不是 bundleID），路径在 `%APPDATA%\PPTClicker\config.json`
+- 两套自检都在 CI 上跑：纯逻辑 89 项 + **钩子链路自检**（合成一次左键，验证被拦截并发出 → 键）
+- 新增 `install.ps1`：PowerShell 一行安装，并 `Unblock-File` 清掉 Internet 标记，不弹 SmartScreen
+- 发版流程改为三平台统一：`v*` tag 会同时产出 macOS zip/dmg 与 Windows zip
+
 ## Unreleased
 
 - 新增 `install.sh` 一行安装脚本：下载最新 Release、校验 SHA256、装到 `/Applications`，

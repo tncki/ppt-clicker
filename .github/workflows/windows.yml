@@ -84,6 +84,19 @@ jobs:
             exit 1
           }
 
+      - name: Syntax-check install.ps1
+        shell: pwsh
+        working-directory: .
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path "install.ps1"), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors -and $errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Host "::error title=install.ps1::$($_.Message)" }
+            exit 1
+          }
+          Write-Host "install.ps1 语法正常"
+
       - name: Publish single-file exe
         shell: pwsh
         run: >

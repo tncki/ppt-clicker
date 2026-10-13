@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  macos:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -28,44 +28,195 @@ jobs:
       - name: Build, test and package
         run: ./release.sh
 
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: |
+            dist/PPT-Clicker-*.zip
+            dist/PPT-Clicker-*.dmg
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Check tag matches csproj version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          [xml]$csproj = Get-Content PPTClicker.csproj
+          $version = ($csproj.Project.PropertyGroup.Version | Where-Object { $_ }) -join ''
+          $tag = "${{ github.ref_name }}".TrimStart('v')
+          Write-Host "tag=$tag csproj=$version"
+          if ($version.Trim() -ne $tag) {
+            Write-Host "::error::csproj version ($version) does not match tag ($tag)"
+            exit 1
+          }
+
+      - name: Build
+        shell: pwsh
+        run: |
+          dotnet build -c Release --nologo 2>&1 | Tee-Object -FilePath build.log
+          if ($LASTEXITCODE -ne 0) {
+            Get-Content build.log | ForEach-Object {
+              if ($_ -match '\S') { Write-Host "::error title=dotnet build::$_" }
+            }
+            exit 1
+          }
+
+      - name: Self-test
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path "bin/Release/net8.0-windows/PPTClicker.exe"
+          $p = Start-Process -FilePath $exe -ArgumentList "--selftest" -Wait -PassThru -NoNewWindow
+          $report = Join-Path $env:TEMP "pptclicker-selftest.txt"
+          if (Test-Path $report) {
+            Get-Content $report | ForEach-Object { Write-Host $_ }
+            Get-Content $report | Where-Object { $_ -match '结果：' } | ForEach-Object {
+              Write-Host "::notice title=self-test::$_"
+            }
+          }
+          if ($p.ExitCode -ne 0) {
+            if (Test-Path $report) {
+              Get-Content $report | Where-Object { $_ -match 'FAIL|异常' } | ForEach-Object {
+                Write-Host "::error title=self-test::$_"
+              }
+            }
+            Write-Host "::error title=self-test::self-test failed"
+            exit 1
+          }
+
+      - name: Hook pipeline test
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $exe = Resolve-Path "bin/Release/net8.0-windows/PPTClicker.exe"
+          $p = Start-Process -FilePath $exe -ArgumentList "--hooktest" -Wait -PassThru -NoNewWindow
+          $report = Join-Path $env:TEMP "pptclicker-hooktest.txt"
+          if (Test-Path $report) {
+            Get-Content $report | ForEach-Object { Write-Host $_ }
+            Get-Content $report | Where-Object { $_ -match 'OK|FAIL|结果' } | ForEach-Object {
+              Write-Host "::notice title=hooktest::$_"
+            }
+          }
+          if ($p.ExitCode -ne 0) {
+            Write-Host "::warning title=hooktest::hook pipeline test did not pass in this session"
+          }
+
+      - name: Syntax-check install.ps1
+        shell: pwsh
+        working-directory: .
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path "install.ps1"), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors -and $errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Host "::error title=install.ps1::$($_.Message)" }
+            exit 1
+          }
+          Write-Host "install.ps1 语法正常"
+
+      - name: Publish win-x64 single file
+        shell: pwsh
+        run: >
+          dotnet publish -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true
+          -o publish/win-x64
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $version = if ("${{ github.ref_name }}" -like "v*") { "${{ github.ref_name }}".Substring(1) } else { "dev" }
+          $zip = "dist/PPT-Clicker-$version-win-x64.zip"
+          Compress-Archive -Path publish/win-x64/PPTClicker.exe -DestinationPath $zip -Force
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  PPT-Clicker-$version-win-x64.zip" | Out-File -Encoding ascii dist/SHA256SUMS-windows.txt
+          Get-Item $zip | Select-Object Name, Length
+          Get-Content dist/SHA256SUMS-windows.txt
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: |
+            windows/dist/*.zip
+            windows/dist/SHA256SUMS-windows.txt
+          if-no-files-found: error
+
+  release:
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: find artifacts -type f | sort
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
           name: PPT Clicker ${{ github.ref_name }}
           generate_release_notes: true
-          files: |
-            dist/PPT-Clicker-*.zip
-            dist/PPT-Clicker-*.dmg
-            dist/SHA256SUMS.txt
+          files: artifacts/*
           body: |
             ### Install
 
-            Both methods below download with `curl`, so macOS **never** shows the
-            "unverified developer" prompt:
+            Every method below downloads with `curl` / `irm` instead of a browser, so
+            macOS **never** shows the "unverified developer" prompt and Windows
+            **never** shows the SmartScreen warning.
+
+            **macOS** (Apple Silicon + Intel, macOS 13+)
 
             ```bash
-            # Homebrew
             brew tap tncki/ppt-clicker https://github.com/tncki/ppt-clicker
             brew install --cask ppt-clicker
 
-            # or one-line installer
+            # or the one-line installer
             curl -fsSL https://raw.githubusercontent.com/tncki/ppt-clicker/main/install.sh | bash
             ```
 
-            Downloading the `.zip`/`.dmg` by hand also works — then clear the
-            quarantine flag once:
+            **Windows** (10/11, x64)
+
+            ```powershell
+            irm https://raw.githubusercontent.com/tncki/ppt-clicker/main/install.ps1 | iex
+            ```
+
+            Downloading the archives by hand also works — then unblock/purge once:
 
             ```bash
+            # macOS
             xattr -dr com.apple.quarantine "/Applications/PPTClicker.app"
+            ```
+
+            ```powershell
+            # Windows
+            Get-ChildItem "$env:LOCALAPPDATA\PPTClicker" -Recurse | Unblock-File
             ```
 
             ### Then
 
-            1. Grant **Accessibility** (required). Grant **Input Monitoring** only if
-               you want `ESC` to turn the clicker off.
+            1. **macOS**: grant **Accessibility** (required); grant **Input Monitoring**
+               only if you want `ESC` to turn the clicker off.
+               **Windows**: nothing to grant, no admin rights needed — just run it.
             2. **Double-click the mouse wheel button** during a slideshow to toggle.
                The corner dot turns green while remapping is active.
             3. Left click / wheel down = next slide, right click / wheel up = previous.
 
-            Universal binary (Apple Silicon + Intel), macOS 13+, MIT licensed.
-            See [README](https://github.com/tncki/ppt-clicker#readme) / [中文说明](https://github.com/tncki/ppt-clicker/blob/main/README.zh-CN.md).
+            Universal macOS binary + self-contained Windows exe (no .NET install
+            required), MIT licensed.
+            See [README](https://github.com/tncki/ppt-clicker#readme).

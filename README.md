@@ -40,59 +40,61 @@ including browser-based decks such as Google Slides.
 
 ## Install
 
-Three ways. The first two **never trigger Gatekeeper**, because they download with
-`curl` instead of a browser — only browser downloads get the quarantine flag that
-makes macOS block unnotarized apps.
+Both platforms are installed with a command-line client (`curl` / `irm`) instead of a
+browser — that is what keeps the macOS "unverified developer" prompt and the Windows
+SmartScreen warning away.
 
-### Homebrew (recommended)
+### macOS (Apple Silicon + Intel, macOS 13+)
 
 ```bash
+# Homebrew
 brew tap tncki/ppt-clicker https://github.com/tncki/ppt-clicker
 brew install --cask ppt-clicker
-```
 
-### One-line installer
-
-```bash
+# or the one-line installer (downloads, verifies SHA256, installs, launches)
 curl -fsSL https://raw.githubusercontent.com/tncki/ppt-clicker/main/install.sh | bash
 ```
 
-Downloads the latest release, verifies it against `SHA256SUMS.txt`, installs to
-`/Applications` (or `~/Applications` when that is not writable) and launches it.
-
-### Manual download
-
-Grab `PPT-Clicker-<version>.zip` or `.dmg` from
-[Releases](https://github.com/tncki/ppt-clicker/releases), unzip and drag
-**PPTClicker.app** into `/Applications`. A browser marks the download as
-*quarantined*, so the first launch is refused — clear the flag once:
+Manual download: grab `PPT-Clicker-<version>.zip` / `.dmg` from
+[Releases](https://github.com/tncki/ppt-clicker/releases). A browser marks the file as
+quarantined, so clear it once:
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/PPTClicker.app"
 ```
 
-(Or attempt to open it and then go to System Settings → Privacy & Security →
-**Open Anyway**. The old *Control-click → Open* trick no longer works on
-macOS 15+.)
-
-> **Why is the app not notarized?** Notarization needs a paid Apple Developer
-> account ($99/year), which this project deliberately avoids. The app is ad-hoc
-> signed instead, and the two install paths above bypass the prompt entirely.
-
-### Grant permissions
-
-| Permission | Why | Required? |
-| --- | --- | --- |
-| **Accessibility** | intercept and replace mouse events | **yes** |
-| **Input Monitoring** | read-only listener for the `ESC` key | only if you want ESC-to-disable |
-
+Then grant **Accessibility** (required — intercepting the mouse needs it). Grant
+**Input Monitoring** only if you want `ESC` to turn the clicker off.
 System Settings → Privacy & Security → Accessibility / Input Monitoring → enable
-**PPT Clicker**. The app opens the right pane for you on first launch and shows
-its own status in the menu.
+**PPT Clicker**. The app opens the right pane for you on first launch.
 
-> Rebuilding the app invalidates the grant on macOS (the permission is bound to
-> the binary's code signature), so you have to toggle it again after each local
-> rebuild.
+### Windows (10/11, x64)
+
+```powershell
+irm https://raw.githubusercontent.com/tncki/ppt-clicker/main/install.ps1 | iex
+```
+
+This downloads the self-contained `PPTClicker.exe` (no .NET install required), puts it
+in `%LOCALAPPDATA%\PPTClicker`, adds a Start Menu shortcut and launches it.
+**No permissions and no administrator rights are needed** — Windows has no equivalent of
+the macOS Accessibility gate for a low-level mouse hook.
+
+Manual download: unzip `PPT-Clicker-<version>-win-x64.zip` anywhere and run
+`PPTClicker.exe`. If SmartScreen complains (browser download), unblock once:
+
+```powershell
+Unblock-File .\PPTClicker.exe
+```
+
+### Platform differences
+
+| | macOS | Windows |
+| --- | --- | --- |
+| Toggle shortcut | `⌃⌥⌘P` | `Ctrl+Alt+Shift+P` |
+| Permissions | Accessibility (+ Input Monitoring for ESC) | none |
+| Config file | `~/Library/Application Support/PPTClicker/config.json` | `%APPDATA%\PPTClicker\config.json` |
+| App whitelist | bundle IDs, e.g. `com.apple.iWork.Keynote` | process names, e.g. `POWERPNT.EXE` |
+| Launch at login | LaunchAgent | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` |
 
 ## Usage
 
@@ -193,7 +195,7 @@ Accessibility/Input Monitoring entries.
 ## How it works
 
 ```
-Sources/
+Sources/            macOS build (CGEventTap, AppKit)
   main.swift         entry point + hidden CLI flags (--selftest, --print-default-config, …)
   AppDelegate.swift  menu bar item, permissions, indicator dot, config reload, login item
   EventTap.swift     CGEventTap at the HID layer: intercept, swallow, synthesize keys
@@ -203,6 +205,14 @@ Sources/
   Localization.swift tiny zh/en string table
   Log.swift          file logger
   SelfTest.swift     89 headless assertions
+
+windows/            Windows build (C# / .NET 8, SetWindowsHookEx + SendInput)
+  Program.cs         entry point + CLI flags (--selftest, --hooktest)
+  TrayApp.cs         tray menu, global hotkey, indicator, autostart (registry)
+  MouseHook.cs       low-level mouse hook: swallow + synthesize arrow keys
+  KeyboardHook.cs    listen-only ESC hook (never swallows)
+  Mapping.cs         pure logic, mirrors the Swift version (+ tests)
+  HookTest.cs        end-to-end hook test used by CI on a real Windows runner
 ```
 
 - The tap is inserted at the **head of the HID event stream**, so mouse events
@@ -255,6 +265,16 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the layout and testing notes.
   Homebrew or the one-line script to avoid the Gatekeeper prompt; a browser download
   needs the one-time `xattr` command above.
 - Moving the app folder breaks the Accessibility grant and the login item.
+
+**Windows specifics**
+
+- Low-level hooks cannot see input going to a *higher-integrity* process: if you run
+  PowerPoint as administrator while PPT Clicker runs normally, the hook will not
+  intercept. Run both normally (default) or both elevated.
+- Games and anti-cheat drivers often block low-level hooks — irrelevant for slideshows,
+  but don't expect it to work inside a game.
+- Building on Windows requires the .NET 8 SDK; end users don't (the exe is self-contained,
+  ~40 MB).
 
 ## License
 
