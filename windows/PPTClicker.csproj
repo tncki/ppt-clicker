@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>PPTClicker</AssemblyName>
+    <RootNamespace>PPTClicker</RootNamespace>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+
+    <Version>2.1.0</Version>
+    <FileVersion>2.1.0.0</FileVersion>
+    <AssemblyVersion>2.1.0.0</AssemblyVersion>
+    <Product>PPT Clicker</Product>
+    <AssemblyTitle>PPT Clicker</AssemblyTitle>
+    <Description>Turn any mouse into a presentation clicker</Description>
+    <Company>tncki</Company>
+    <Copyright>MIT License</Copyright>
+
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <DebugType>none</DebugType>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>
