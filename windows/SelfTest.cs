@@ -31,6 +31,21 @@ namespace PPTClicker
 
         public static int Run()
         {
+            try
+            {
+                return RunBody();
+            }
+            catch (Exception ex)
+            {
+                failed++;
+                lines.Add("  FAIL 自检过程抛出异常：" + ex.ToString());
+                Finish();
+                return 1;
+            }
+        }
+
+        private static int RunBody()
+        {
             lines.Add("PPT Clicker (Windows) 自测");
 
             Section("[1] 默认映射");
@@ -163,6 +178,11 @@ namespace PPTClicker
             Check(fresh.ShowIndicator, "默认显示角落指示灯");
             Check(fresh.Scope == "global", "默认全局生效");
 
+            return Finish();
+        }
+
+        private static int Finish()
+        {
             lines.Add("");
             lines.Add("结果：" + passed + " 通过 / " + failed + " 失败");
 
