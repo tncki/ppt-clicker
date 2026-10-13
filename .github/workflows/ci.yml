@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          sw_vers
+          swiftc --version
+
+      - name: Build and run self-tests
+        run: ./build.sh
+
+      - name: Build universal binary
+        run: ./build.sh --universal
+
+      - name: Verify bundle
+        run: |
+          lipo -info dist/PPTClicker.app/Contents/MacOS/PPTClicker
+          codesign -dv --verbose=2 dist/PPTClicker.app 2>&1 | grep -E "Identifier|Format"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" dist/PPTClicker.app/Contents/Info.plist
+
+      - name: Package
+        run: ./release.sh --no-build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PPT-Clicker-app
+          path: |
+            dist/PPT-Clicker-*.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error

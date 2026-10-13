@@ -1,0 +1,65 @@
+# Contributing
+
+Thanks for helping! This is a small, dependency-free Swift project — no package
+manager, no Xcode project file, just `swiftc` and a shell script.
+
+## Build & test
+
+```bash
+./build.sh              # host arch, runs the self-test suite
+./build.sh --universal  # arm64 + x86_64
+./release.sh            # universal + zip + dmg + SHA256SUMS
+```
+
+`./build.sh` must pass all self-tests before a PR is mergeable. To run them alone:
+
+```bash
+./build.sh >/dev/null && dist/PPTClicker.app/Contents/MacOS/PPTClicker --selftest
+```
+
+## Layout
+
+```
+Sources/
+  main.swift        entry point + hidden CLI flags (--selftest, --print-default-config, …)
+  AppDelegate.swift menu bar, permissions, indicator, config reload, login item
+  EventTap.swift    HID event tap: interception, key synthesis, scroll handling
+  Mapping.swift     pure logic: actions, key codes, direction detection (unit-tested)
+  Config.swift      config model, lenient JSON decoding, default template
+  Indicator.swift   the corner indicator dot (borderless panel)
+  Localization.swift minimal zh/en string table
+  Log.swift         file logger
+  SelfTest.swift    the headless test suite
+```
+
+Rules of thumb:
+
+- Keep decision logic in `Mapping.swift` (pure functions) so it stays testable
+  without any permissions. Anything that needs Accessibility lives in
+  `EventTap.swift`.
+- Add a self-test for every behaviour fix — the suite is the only automated
+  verification we have, since interception itself requires a real user and
+  granted permissions.
+- Code comments and log messages are currently in Chinese; that is intentional
+  (the maintainer's language). UI strings must go through `L.s(...)`.
+- Log messages are diagnostics, not UI.
+
+## Testing by hand
+
+Interception needs the Accessibility permission and a real mouse, so it cannot
+be verified in CI. The app can verify its own event path:
+
+- It synthesizes a tagged click at launch (`鼠标通道自检`) and reports the result
+  in the log — no permission prompt needed for that check.
+- Set `"debugEvents": true` in the config to log every raw event
+  (`RAW scroll axis1=+1 …`), then toggle the mode and click/scroll.
+
+Log location: `~/Library/Logs/PPTClicker.log` by default.
+
+## Release checklist
+
+1. Bump `CFBundleShortVersionString` (and `CFBundleVersion`) in `Info.plist`.
+2. Update `CHANGELOG.md`.
+3. `./release.sh` and smoke-test the `.dmg` on a clean machine if possible.
+4. Tag and push: `git tag v2.0.0 && git push origin v2.0.0` — the
+   `Release` workflow builds and uploads the artifacts.

@@ -1,0 +1,61 @@
+{
+  "_说明": "PPT 翻页笔配置。改完在菜单栏点『重新载入配置』，或重启本程序即可生效。",
+  "_动作可选值": {
+    "next": "下一页（发送 → 键）",
+    "prev": "上一页（发送 ← 键）",
+    "pageDown": "Page Down",
+    "pageUp": "Page Up",
+    "space": "空格",
+    "escape": "Esc（WPS/Impress 放映中退出；Keynote 无效果）",
+    "black": "黑屏（b 键）",
+    "white": "白屏（w 键）",
+    "none": "拦截这个鼠标事件但什么都不做",
+    "pass": "不拦截，保持系统原本行为"
+  },
+  "_生效时机": "翻页笔模式由快捷键手动开/关；scope=global 表示开启后在所有软件里都生效，scope=apps 表示仅当前台 App 在 apps 列表里时才生效（菜单里也能切）。",
+  "_滚轮方向": "auto = 跟随系统『自然滚动』设置自动判断（推荐，换机器也不用改）；若方向仍感觉相反，改成 normal 或 inverted。",
+  "scrollDirection": "auto",
+  "_关闭方式": "开启用快捷键；关闭可以用 快捷键再按一次 / ESC / 双击滚轮键（中键）。ESC 是旁听不拦截，所以 PPT 自己的『按 ESC 结束放映』照样有效。",
+  "escapeDisables": true,
+  "middleDoubleClickToggles": true,
+  "_指示灯": "屏幕角落的小圆点：绿灯=已开启，灰圈=已关闭。左键点一下=开关，右键=菜单，拖动=换位置（位置会记住）。",
+  "showIndicator": true,
+  "scope": "global",
+  "bindings": {
+    "leftClick": "next",
+    "rightClick": "prev",
+    "middleClick": "pass",
+    "backButton": "pass",
+    "forwardButton": "pass",
+    "scrollUp": "prev",
+    "scrollDown": "next",
+    "scrollLeft": "pass",
+    "scrollRight": "pass"
+  },
+  "hotkey": {
+    "key": "p",
+    "modifiers": ["control", "option", "command"]
+  },
+  "throttleMs": 300,
+  "debugLog": true,
+  "debugEvents": false,
+  "logPath": "~/Library/Logs/PPTClicker.log",
+  "startEnabled": false,
+  "_apps说明": "只在 scope=apps 时生效。浏览器那三条是给网页版演示（如 Google Slides）用的，如果你担心在浏览器里误触发，删掉即可。",
+  "apps": [
+    { "bundleID": "com.apple.iWork.Keynote", "name": "Keynote" },
+    { "bundleID": "com.microsoft.Powerpoint", "name": "Microsoft PowerPoint" },
+    { "bundleID": "com.kingsoft.wpsoffice.mac", "name": "WPS Office" },
+    { "bundleID": "org.libreoffice.script", "name": "LibreOffice Impress" },
+    { "bundleID": "com.apple.Preview", "name": "Preview" },
+    { "bundleID": "com.adobe.Acrobat.Pro", "name": "Adobe Acrobat" },
+    { "bundleID": "com.google.Chrome", "name": "Google Chrome" },
+    { "bundleID": "com.apple.Safari", "name": "Safari" },
+    { "bundleID": "com.microsoft.edgemac", "name": "Microsoft Edge" }
+  ],
+  "excludeApps": [
+    { "bundleID": "com.apple.systempreferences", "name": "系统设置" },
+    { "bundleID": "com.apple.UserNotificationCenter" },
+    { "bundleID": "com.apple.CoreServicesUIAgent" }
+  ]
+}
