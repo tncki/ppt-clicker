@@ -97,8 +97,8 @@ namespace PPTClicker
             }
             if (axis2 != 0)
             {
-                bool isRight = downIsPositive ? (axis2 > 0) : (axis2 < 0);
-                return isRight ? MouseKind.ScrollRight : MouseKind.ScrollLeft;
+                // 水平轴与"自然滚动"无关：Windows 的 WM_MOUSEHWHEEL 正数 = 向右倾 = 向右滚
+                return axis2 > 0 ? MouseKind.ScrollRight : MouseKind.ScrollLeft;
             }
             return null;
         }

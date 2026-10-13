@@ -151,6 +151,7 @@ namespace PPTClicker
             Check(Mapping.ScrollKind(-120, 0, false) == MouseKind.ScrollDown, "delta=-120 → 物理向下滚");
             Check(Mapping.ScrollKind(-120, 0, true) == MouseKind.ScrollUp, "inverted 时方向翻转");
             Check(Mapping.ScrollKind(0, -2, false) == MouseKind.ScrollLeft, "横向 -2 → 向左滚");
+            Check(Mapping.ScrollKind(0, 2, false) == MouseKind.ScrollRight, "横向 +2 → 向右滚（Windows 约定）");
             Check(Mapping.ScrollKind(5, 1, false) == MouseKind.ScrollUp, "纵向优先于横向");
             Check(Mapping.ScrollKind(0, 0, false) == null, "零位移不产生动作");
             Bindings d = new Bindings();
