@@ -9,8 +9,8 @@
 #
 # 发版后更新：./release.sh 会自动刷新下面的 version / sha256
 cask "ppt-clicker" do
-  version "2.0.0"
-  sha256 "0c42d628c35a78f138cfe6d4f679c8131cf4a2912e10830367f2b34ae4101730"
+  version "2.1.0"
+  sha256 "80891909335accc84825ea09a13bffa865ead1ca8f10371711f69453c33c896a"
 
   url "https://github.com/tncki/ppt-clicker/releases/download/v#{version}/PPT-Clicker-#{version}.zip"
   name "PPT Clicker"

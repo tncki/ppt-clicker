@@ -45,10 +45,34 @@ git push origin v2.0.0
 
 ## 后续版本
 
-1. 改 `Info.plist` 里的 `CFBundleShortVersionString`（和 `CFBundleVersion`）
-2. 更新 `CHANGELOG.md`
-3. 本地验证：`./build.sh`（89 项自测）+ 手动跑一遍四种开关
-4. `git commit` → `git push` → `git tag vX.Y.Z` → `git push origin vX.Y.Z`
+**两个平台各有自己的版本号，必须同时改，否则 tag 校验会失败：**
+
+| 平台 | 位置 |
+| --- | --- |
+| macOS | `Info.plist` 的 `CFBundleShortVersionString`（和 `CFBundleVersion`） |
+| Windows | `windows/PPTClicker.csproj` 的 `<Version>` |
+
+步骤：
+
+1. 改上面两处版本号 + `CHANGELOG.md`
+2. 本地验证：`./build.sh`（89 项自测）；Windows 改动能过 CI 的 `--selftest` + `--hooktest`
+3. `git commit` → `git push`（等 CI 绿）→ `git tag vX.Y.Z` → `git push origin vX.Y.Z`
+4. `./tools/update-cask.sh` 同步 cask 的校验和并提交
+
+## 发布产物
+
+`v*` tag 会由 `.github/workflows/release.yml` 同时产出：
+
+| 文件 | 平台 | 说明 |
+| --- | --- | --- |
+| `PPT-Clicker-<v>.zip` / `.dmg` | macOS | 通用二进制（arm64 + x86_64） |
+| `PPT-Clicker-<v>-win-x64.zip` | Windows | 自包含单文件 exe，约 56 MB（目标机器无需装 .NET） |
+| `SHA256SUMS.txt` / `SHA256SUMS-windows.txt` | 两者 | 校验和 |
+
+两个平台的包**都没有代码签名**：
+
+- macOS：`install.sh` / Homebrew 用 curl 下载，不带隔离属性，不需要 Gatekeeper 放行；手动下载需 `xattr -dr`
+- Windows：`install.ps1` 解压后调用 `Unblock-File` 清掉 Internet 标记，不弹 SmartScreen；手动下载需 `Unblock-File`
 
 ## 本地构建
 
