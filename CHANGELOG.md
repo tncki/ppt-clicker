@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- 新增 `install.sh` 一行安装脚本：下载最新 Release、校验 SHA256、装到 `/Applications`，
+  因为用 `curl` 下载不带隔离属性，用户不会被 Gatekeeper 拦
+- 新增 `Casks/ppt-clicker.rb`：可直接 `brew tap tncki/ppt-clicker <本仓库>` 安装
+- `release.sh` 发版时自动同步 cask 的版本号与校验和
+- 明确采用「不做 Apple 公证」策略，文档改为以免弹窗安装方式为主
+
 ## 2.0.0
 
 首个公开发布版本。

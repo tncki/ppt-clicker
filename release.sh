@@ -43,6 +43,14 @@ fi
 echo "==> 计算校验和"
 (cd "$DIST" && { [[ $DMG_OK == 1 ]] && shasum -a 256 "$NAME.dmg"; shasum -a 256 "$NAME.zip"; } > SHA256SUMS.txt)
 
+# 顺手刷新 Homebrew cask 里的版本号与 zip 校验和
+CASK="$ROOT/Casks/ppt-clicker.rb"
+if [[ -f "$CASK" ]]; then
+  ZIP_SHA=$(grep " $NAME.zip\$" "$DIST/SHA256SUMS.txt" | awk '{print $1}')
+  /usr/bin/sed -i '' -e "s/  version \".*\"/  version \"$VERSION\"/" -e "s/  sha256 \".*\"/  sha256 \"$ZIP_SHA\"/" "$CASK"
+  echo "已同步 $CASK（version=$VERSION）—— 记得 git commit"
+fi
+
 echo ""
 cat "$DIST/SHA256SUMS.txt"
 echo ""

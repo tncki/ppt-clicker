@@ -36,22 +36,36 @@
 
 ## 安装
 
-### 1. 下载
+三种方式。**前两种完全不弹 Gatekeeper** —— 因为脚本用 `curl` 下载，而只有浏览器下载才会被标记「隔离」属性（未公证的 App 被标记后才会被系统拦截）。
 
-从 [Releases](https://github.com/tncki/ppt-clicker/releases) 下载 `PPT-Clicker-<版本>.zip` 或 `.dmg`，解压后把 **PPTClicker.app** 拖进 `/Applications`。
+### Homebrew（推荐）
 
-### 2. 绕过一次 Gatekeeper
+```bash
+brew tap tncki/ppt-clicker https://github.com/tncki/ppt-clicker
+brew install --cask ppt-clicker
+```
 
-本应用没有做 Apple 公证（需要付费开发者账号），所以首次打开会被系统拦下。二选一：
+### 一行命令安装
 
-- 右键点 App → **打开** → 再点 **打开**，或
-- 执行一次：
+```bash
+curl -fsSL https://raw.githubusercontent.com/tncki/ppt-clicker/main/install.sh | bash
+```
 
-  ```bash
-  xattr -dr com.apple.quarantine "/Applications/PPTClicker.app"
-  ```
+脚本会：取最新 Release → 用 `SHA256SUMS.txt` 校验完整性 → 装到 `/Applications`（不可写则退到 `~/Applications`）→ 启动。**无需要手动放行。**
 
-### 3. 授予权限
+### 手动下载
+
+从 [Releases](https://github.com/tncki/ppt-clicker/releases) 下载 `PPT-Clicker-<版本>.zip` 或 `.dmg`，解压后把 **PPTClicker.app** 拖进 `/Applications`。浏览器下载会被标记为「隔离」，首次打开会被拦，执行一次即可：
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/PPTClicker.app"
+```
+
+（也可以先尝试打开，再到 系统设置 → 隐私与安全性 → **仍要打开**。注意 macOS 15 起已经取消了旧的"右键→打开"绕过方式。）
+
+> **为什么不做公证？** 公证需要 Apple 开发者账号（$99/年），本项目刻意不使用。App 用临时签名，上面两条安装路径完全绕开这个提示。
+
+### 授予权限
 
 | 权限 | 用途 | 是否必需 |
 | --- | --- | --- |
@@ -61,14 +75,6 @@
 系统设置 → 隐私与安全性 → 辅助功能 / 输入监控 → 打开 **PPT Clicker**。首次启动时程序会自动帮你打开对应设置页，菜单里也能随时看到权限状态。
 
 > 重新编译后授权会失效（macOS 把权限绑在二进制的签名指纹上），需要重新打开一次开关。
-
-### Homebrew
-
-```bash
-brew install --cask ./packaging/homebrew/ppt-clicker.rb   # 克隆仓库后本地安装
-```
-
-仓库里带了 cask 模板 [`packaging/homebrew/ppt-clicker.rb`](packaging/homebrew/ppt-clicker.rb)，发布 Release 后可以放进自己的 tap。
 
 ## 使用
 
@@ -183,7 +189,8 @@ cd ppt-clicker
 - `escape` 这个**动作**无法退出 Keynote 放映（用你自己的 ESC 键即可——程序不会拦它）。
 - 左键被换成 `→` 后，**幻灯片里的链接和按钮点不动**；需要就把它绑成 `pass`。
 - 指示灯占据屏幕角落 16×16 点的区域，那一小块内的点击会落到圆点上（可拖走或隐藏）。
-- 没有公证，首次打开需要按上面的 Gatekeeper 步骤操作。
+- 没有公证（刻意不使用付费 Apple 账号）。用 Homebrew 或一行脚本安装不会弹提示；
+  浏览器下载则需执行一次上面的 `xattr` 命令。
 - 移动 App 目录会导致辅助功能授权与开机自启失效。
 
 ## 许可证

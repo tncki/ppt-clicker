@@ -40,14 +40,32 @@ jobs:
           body: |
             ### Install
 
-            1. Download `PPT-Clicker-*.zip` (or `.dmg`), drag **PPTClicker.app** to `/Applications`.
-            2. The app is **not notarized** — on first launch use
-               *right-click → Open*, or run
-               `xattr -dr com.apple.quarantine "/Applications/PPTClicker.app"`.
-            3. Grant **Accessibility** (required). Grant **Input Monitoring** only if
-               you want `ESC` to turn the clicker off.
-            4. **Double-click the mouse wheel button** during a slideshow to toggle.
-               The corner dot turns green while remapping is active.
+            Both methods below download with `curl`, so macOS **never** shows the
+            "unverified developer" prompt:
 
-            Universal binary (Apple Silicon + Intel), macOS 13+.
+            ```bash
+            # Homebrew
+            brew tap tncki/ppt-clicker https://github.com/tncki/ppt-clicker
+            brew install --cask ppt-clicker
+
+            # or one-line installer
+            curl -fsSL https://raw.githubusercontent.com/tncki/ppt-clicker/main/install.sh | bash
+            ```
+
+            Downloading the `.zip`/`.dmg` by hand also works — then clear the
+            quarantine flag once:
+
+            ```bash
+            xattr -dr com.apple.quarantine "/Applications/PPTClicker.app"
+            ```
+
+            ### Then
+
+            1. Grant **Accessibility** (required). Grant **Input Monitoring** only if
+               you want `ESC` to turn the clicker off.
+            2. **Double-click the mouse wheel button** during a slideshow to toggle.
+               The corner dot turns green while remapping is active.
+            3. Left click / wheel down = next slide, right click / wheel up = previous.
+
+            Universal binary (Apple Silicon + Intel), macOS 13+, MIT licensed.
             See [README](README.md) / [中文说明](README.zh-CN.md).

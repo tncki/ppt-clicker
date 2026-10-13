@@ -2,8 +2,9 @@
 
 仓库：<https://github.com/tncki/ppt-clicker>　维护者：[@tncki](https://github.com/tncki)
 
-当前状态：本地已有完整 git 历史，SSH 推送可用（`ssh -T git@github.com` → `Hi tncki!`），
-只差在 GitHub 上创建仓库。
+当前状态：**已发布** v2.0.0 —— 仓库 <https://github.com/tncki/ppt-clicker>、
+Release <https://github.com/tncki/ppt-clicker/releases/tag/v2.0.0>，CI 与发版工作流均已跑通。
+下面保留首次发布的步骤作为记录。
 
 ## 首次发布
 
@@ -59,59 +60,52 @@ git push origin v2.0.0
 
 > 注意：沙箱环境里 `hdiutil` 无法创建挂载点，本地只出 zip；GitHub Actions 不受限，会同时产出 dmg。
 
-## Homebrew
+## 安装渠道（三条，都不需要 Apple 开发者账号）
 
-`packaging/homebrew/ppt-clicker.rb` 是 cask 模板。每次发版后：
+| 渠道 | 是否弹 Gatekeeper | 说明 |
+| --- | --- | --- |
+| `Casks/ppt-clicker.rb`（Homebrew） | **不弹** | cask 用 curl 下载，不带隔离属性 |
+| `install.sh`（一行脚本） | **不弹** | 同上，并且额外校验 SHA256、清一次 quarantine |
+| 手动下载 zip/dmg | 会弹 | 浏览器会给文件打隔离标记，需 `xattr -dr com.apple.quarantine` 放行一次 |
 
-```bash
-shasum -a 256 dist/PPT-Clicker-<版本>.zip     # 填进 cask 的 sha256
+实测依据（本机 macOS 26.6）：
+
+```
+curl 下载的 zip / 解压出的 App → xattr 无 quarantine 属性 → 直接启动
+spctl -a -t exec 判定 rejected（未公证），但只要没隔离标记就不会被拦
 ```
 
-放进自己的 tap 仓库（`homebrew-tap/Casks/ppt-clicker.rb`）后，用户就能：
+### cask 维护
+
+`Casks/ppt-clicker.rb` 里的 `version` 与 `sha256` 由 `release.sh` **自动同步**，
+发版后记得把它一起提交：
 
 ```bash
-brew install --cask tncki/tap/ppt-clicker
+./release.sh
+git add Casks/ppt-clicker.rb && git commit -m "chore: 同步 cask 2.0.1"
 ```
 
-## 关于签名与公证
+用户端：
 
-发布包是**临时签名（ad-hoc）**，用户首次打开需要在
-「系统设置 → 隐私与安全性 → 仍要打开」，或执行一次
-`xattr -dr com.apple.quarantine "/Applications/PPTClicker.app"`。
+```bash
+brew tap tncki/ppt-clicker https://github.com/tncki/ppt-clicker
+brew install --cask ppt-clicker
+brew upgrade --cask ppt-clicker     # 升级；zap 可连配置一起清
+```
 
-想彻底消除这一步需要 Apple 开发者账号（$99/年）：
+## 关于公证：决定不做
 
-1. 生成 *Developer ID Application* 证书并导出 `.p12`
-2. 把 `.p12`、密码、Apple ID、Team ID、App 专用密码放进仓库 Secrets
-3. 在 `.github/workflows/release.yml` 打包步骤后加导入证书 + 签名 + 公证：
+本项目**不使用 Apple 开发者账号（$99/年）**，因此不做签名与公证。
+这是明确的取舍，不是遗漏：
 
-   ```yaml
-   - name: Import certificate
-     env:
-       CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
-       CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
-     run: |
-       echo "$CERT_P12" | base64 -d > cert.p12
-       security create-keychain -p actions build.keychain
-       security default-keychain -s build.keychain
-       security unlock-keychain -p actions build.keychain
-       security import cert.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign
-       security set-key-partition-list -S apple-tool:,apple: -s -k actions build.keychain
+- 代价：手动下载 zip 的用户需要执行一次 `xattr` 放行命令（文案已写在 README 与 Release 说明里）
+- 缓解：`install.sh` 与 Homebrew 两条路径用 curl 下载，用户完全无感
+- 另外：App 用临时签名，**重新编译后辅助功能授权会失效**（macOS 按二进制指纹记权限）。
+  这是自用/开发时的已知不便；普通用户只在升级版本时会遇到一次。
 
-   - name: Sign, notarize and staple
-     env:
-       APPLE_ID: ${{ secrets.APPLE_ID }}
-       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-       APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
-     run: |
-       codesign --force --deep --options runtime --sign "Developer ID Application" dist/PPTClicker.app
-       ditto -c -k --keepParent dist/PPTClicker.app /tmp/notarize.zip
-       xcrun notarytool submit /tmp/notarize.zip --apple-id "$APPLE_ID" \
-         --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
-       xcrun stapler staple dist/PPTClicker.app
-   ```
-
-   同时把 `build.sh` 里的 `codesign --sign -` 换成正式证书。
+如果哪天改变主意，公证步骤见 git 历史里 2026-10-13 之前的版本，或按下面的要点做：
+生成 *Developer ID Application* 证书 → 放进仓库 Secrets → 在 `release.yml` 里
+导入证书 + `codesign --options runtime` + `notarytool submit --wait` + `stapler staple`。
 
 ## 维护备忘
 

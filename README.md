@@ -40,25 +40,46 @@ including browser-based decks such as Google Slides.
 
 ## Install
 
-### 1. Download
+Three ways. The first two **never trigger Gatekeeper**, because they download with
+`curl` instead of a browser — only browser downloads get the quarantine flag that
+makes macOS block unnotarized apps.
 
-Grab `PPT-Clicker-<version>.zip` (or `.dmg`) from
+### Homebrew (recommended)
+
+```bash
+brew tap tncki/ppt-clicker https://github.com/tncki/ppt-clicker
+brew install --cask ppt-clicker
+```
+
+### One-line installer
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tncki/ppt-clicker/main/install.sh | bash
+```
+
+Downloads the latest release, verifies it against `SHA256SUMS.txt`, installs to
+`/Applications` (or `~/Applications` when that is not writable) and launches it.
+
+### Manual download
+
+Grab `PPT-Clicker-<version>.zip` or `.dmg` from
 [Releases](https://github.com/tncki/ppt-clicker/releases), unzip and drag
-**PPTClicker.app** into `/Applications`.
+**PPTClicker.app** into `/Applications`. A browser marks the download as
+*quarantined*, so the first launch is refused — clear the flag once:
 
-### 2. Bypass Gatekeeper once
+```bash
+xattr -dr com.apple.quarantine "/Applications/PPTClicker.app"
+```
 
-The app is not notarized (that requires a paid Apple Developer account), so
-macOS will refuse the first launch. Either:
+(Or attempt to open it and then go to System Settings → Privacy & Security →
+**Open Anyway**. The old *Control-click → Open* trick no longer works on
+macOS 15+.)
 
-- Right-click the app → **Open** → **Open** again, or
-- run once:
+> **Why is the app not notarized?** Notarization needs a paid Apple Developer
+> account ($99/year), which this project deliberately avoids. The app is ad-hoc
+> signed instead, and the two install paths above bypass the prompt entirely.
 
-  ```bash
-  xattr -dr com.apple.quarantine "/Applications/PPTClicker.app"
-  ```
-
-### 3. Grant permissions
+### Grant permissions
 
 | Permission | Why | Required? |
 | --- | --- | --- |
@@ -72,15 +93,6 @@ its own status in the menu.
 > Rebuilding the app invalidates the grant on macOS (the permission is bound to
 > the binary's code signature), so you have to toggle it again after each local
 > rebuild.
-
-### Homebrew
-
-```bash
-brew install --cask ./packaging/homebrew/ppt-clicker.rb   # local file, after cloning
-```
-
-A cask template lives in [`packaging/homebrew/`](packaging/homebrew/ppt-clicker.rb);
-use it with your own tap once you publish a release.
 
 ## Usage
 
@@ -239,7 +251,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the layout and testing notes.
   longer clickable**; bind `leftClick` to `pass` if you need them.
 - The indicator dot occupies a 16×16 pt region in the corner of your screen;
   clicks there hit the dot (move it or hide it if that bothers you).
-- The app is not notarized, so the first launch needs the Gatekeeper step above.
+- The app is not notarized (a deliberate choice: no paid Apple account). Install via
+  Homebrew or the one-line script to avoid the Gatekeeper prompt; a browser download
+  needs the one-time `xattr` command above.
 - Moving the app folder breaks the Accessibility grant and the login item.
 
 ## License
